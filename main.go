@@ -3,10 +3,18 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
+)
+
+const (
+	clientId     = "9dc453241d4fba503b235912fab6b9c3a90dc9eae88006affcc9ccf515621432"
+	clientSecret = "f73a04e4ea904aaf1c0282263073ea06d7a1b6d64b751eadfa4d196c69530048"
+	redirectUri  = "urn:ietf:wg:oauth:2.0:oob"
 )
 
 func main() {
@@ -36,7 +44,13 @@ func Login() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Authorization Code: %s\n", AuthorizationCode(authorizationCompleteUrl))
+	code := AuthorizationCode(authorizationCompleteUrl)
+	log.Printf("Authorization Code: %s\n", code)
+
+	tokenEndpointRawResponse := GetTokenEndpointRawResponse(code)
+	log.Println(tokenEndpointRawResponse)
+
+	fmt.Println("Login succeeded")
 }
 
 func AuthorizationUrl() string {
@@ -46,10 +60,10 @@ func AuthorizationUrl() string {
 	}
 
 	q := url.Query()
-	q.Set("client_id", "9dc453241d4fba503b235912fab6b9c3a90dc9eae88006affcc9ccf515621432")
+	q.Set("client_id", clientId)
 	q.Set("response_type", "code")
 	q.Set("scope", "read_products write_products read_sales write_sales read_shop_coupons")
-	q.Set("redirect_uri", "urn:ietf:wg:oauth:2.0:oob")
+	q.Set("redirect_uri", redirectUri)
 
 	url.RawQuery = q.Encode()
 
@@ -76,4 +90,26 @@ func AuthorizationCode(authorizationCompleteUrl string) string {
 	splitted := strings.Split(url.Path, "/")
 
 	return splitted[len(splitted)-1]
+}
+
+func GetTokenEndpointRawResponse(code string) string {
+	v := url.Values{}
+	v.Set("client_id", clientId)
+	v.Set("client_secret", clientSecret)
+	v.Set("code", code)
+	v.Set("grant_type", "authorization_code")
+	v.Set("redirect_uri", redirectUri)
+
+	resp, err := http.PostForm("https://api.shop-pro.jp/oauth/token", v)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(body)
 }
