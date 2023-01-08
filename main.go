@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -12,10 +13,25 @@ import (
 )
 
 const (
-	clientId     = "9dc453241d4fba503b235912fab6b9c3a90dc9eae88006affcc9ccf515621432"
-	clientSecret = "f73a04e4ea904aaf1c0282263073ea06d7a1b6d64b751eadfa4d196c69530048"
-	redirectUri  = "urn:ietf:wg:oauth:2.0:oob"
+	clientId        = "9dc453241d4fba503b235912fab6b9c3a90dc9eae88006affcc9ccf515621432"
+	clientSecret    = "f73a04e4ea904aaf1c0282263073ea06d7a1b6d64b751eadfa4d196c69530048"
+	redirectUri     = "urn:ietf:wg:oauth:2.0:oob"
+	productTemplate = `=== Product %d
+Name: %s
+Stocks: %d
+Model Number: %s
+Price: ¥%d
+Description: %s`
 )
+
+type Product struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	ModelNumber string `json:"model_number"`
+	Price       int    `json:"sales_price"`
+	Description string `json:"expl"`
+	Stocks      int    `json:"stocks"`
+}
 
 func main() {
 	if len(os.Args[1:]) == 0 {
@@ -66,7 +82,24 @@ func GetProducts(accessToken string) {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(body))
+	var payload map[string]interface{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		log.Fatal(err)
+	}
+
+	productsJson, err := json.Marshal(payload["products"])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var products []Product
+	if err := json.Unmarshal(productsJson, &products); err != nil {
+		log.Fatal(err)
+	}
+
+	for i, v := range products {
+		fmt.Printf(productTemplate+"\n", i+1, v.Name, v.Stocks, v.ModelNumber, v.Price, v.Description)
+	}
 }
 
 func Login() {
