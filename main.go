@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -33,7 +34,15 @@ type Product struct {
 	Stocks      int    `json:"stocks"`
 }
 
+var productFlagSet = flag.NewFlagSet("product", flag.ExitOnError)
+var jsonOutputFlag bool
+
+func init() {
+	productFlagSet.BoolVar(&jsonOutputFlag, "json", false, "output as JSON")
+}
+
 func main() {
+
 	if len(os.Args[1:]) == 0 {
 		fmt.Fprintf(os.Stderr, "$ colorme login\n")
 		os.Exit(1)
@@ -43,8 +52,10 @@ func main() {
 	if command == "login" {
 		Login()
 	} else if command == "product" {
+		productFlagSet.Parse(os.Args[2:])
+
 		accessToken := getAccessTokenFromEnv()
-		GetProducts(accessToken)
+		GetProducts(accessToken, jsonOutputFlag)
 	} else {
 		fmt.Fprintf(os.Stderr, "$ colorme login\n")
 		os.Exit(1)
@@ -61,7 +72,7 @@ func getAccessTokenFromEnv() string {
 	return accessToken
 }
 
-func GetProducts(accessToken string) {
+func GetProducts(accessToken string, outputAsJson bool) {
 	req, err := http.NewRequest("GET", "https://api.shop-pro.jp/v1/products?limit=1", nil)
 	if err != nil {
 		log.Fatal(err)
@@ -80,6 +91,11 @@ func GetProducts(accessToken string) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if outputAsJson {
+		fmt.Println(string(body))
+		return
 	}
 
 	var payload map[string]interface{}
