@@ -17,22 +17,26 @@ func main() {
 
 	command := os.Args[1]
 	if command == "login" {
-		fmt.Println("Access to this URL and authorize this app")
-		fmt.Println(AuthorizationUrl())
-		fmt.Println()
-		fmt.Println("Paste the \"Authorization Complete\" page's URL")
-		fmt.Printf("URL: ")
-
-		authorizationCompleteUrl, err := scanFromStdin()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("Authorization Code: %s\n", AuthorizationCode(authorizationCompleteUrl))
+		Login()
 	} else {
 		fmt.Fprintf(os.Stderr, "$ colorme login\n")
 		os.Exit(1)
 	}
+}
+
+func Login() {
+	fmt.Println("Access to this URL and authorize this app")
+	fmt.Println(AuthorizationUrl())
+	fmt.Println()
+	fmt.Println("Paste the \"Authorization Complete\" page's URL")
+	fmt.Printf("URL: ")
+
+	authorizationCompleteUrl, err := scanFromStdin()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("Authorization Code: %s\n", AuthorizationCode(authorizationCompleteUrl))
 }
 
 func AuthorizationUrl() string {
