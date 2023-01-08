@@ -26,10 +26,47 @@ func main() {
 	command := os.Args[1]
 	if command == "login" {
 		Login()
+	} else if command == "product" {
+		accessToken := getAccessTokenFromEnv()
+		GetProducts(accessToken)
 	} else {
 		fmt.Fprintf(os.Stderr, "$ colorme login\n")
 		os.Exit(1)
 	}
+}
+
+func getAccessTokenFromEnv() string {
+	accessToken, found := os.LookupEnv("COLORME_ACCESS_TOKEN")
+	if !found {
+		fmt.Fprintf(os.Stderr, "Set COLORME_ACCESS_TOKEN")
+		os.Exit(1)
+	}
+
+	return accessToken
+}
+
+func GetProducts(accessToken string) {
+	req, err := http.NewRequest("GET", "https://api.shop-pro.jp/v1/products?limit=1", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(string(body))
 }
 
 func Login() {
