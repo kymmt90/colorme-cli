@@ -1,13 +1,38 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net/url"
+	"os"
+	"strings"
 )
 
 func main() {
-	fmt.Println(AuthorizationUrl())
+	if len(os.Args[1:]) == 0 {
+		fmt.Fprintf(os.Stderr, "$ colorme login\n")
+		os.Exit(1)
+	}
+
+	command := os.Args[1]
+	if command == "login" {
+		fmt.Println("Access to this URL and authorize this app")
+		fmt.Println(AuthorizationUrl())
+		fmt.Println()
+		fmt.Println("Paste the \"Authorization Complete\" page's URL")
+		fmt.Printf("URL: ")
+
+		authorizationCompleteUrl, err := scanFromStdin()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("Authorization Code: %s\n", AuthorizationCode(authorizationCompleteUrl))
+	} else {
+		fmt.Fprintf(os.Stderr, "$ colorme login\n")
+		os.Exit(1)
+	}
 }
 
 func AuthorizationUrl() string {
@@ -25,4 +50,26 @@ func AuthorizationUrl() string {
 	url.RawQuery = q.Encode()
 
 	return url.String()
+}
+
+func scanFromStdin() (string, error) {
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		return scanner.Text(), nil
+	} else if err := scanner.Err(); err != nil {
+		return "", err
+	} else {
+		return "", nil
+	}
+}
+
+func AuthorizationCode(authorizationCompleteUrl string) string {
+	url, err := url.Parse(authorizationCompleteUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	splitted := strings.Split(url.Path, "/")
+
+	return splitted[len(splitted)-1]
 }
