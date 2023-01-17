@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -187,9 +188,10 @@ func GetProducts(accessToken string, outputAsJson bool) {
 }
 
 func Login() {
-	fmt.Println("Access to this URL and authorize this app")
-	fmt.Println(AuthorizationUrl())
+	fmt.Println("Open the authorization URL...")
+	openInBrowser(AuthorizationUrl())
 	fmt.Println()
+
 	fmt.Println("Paste the \"Authorization Complete\" page's URL")
 	fmt.Printf("URL: ")
 
@@ -205,6 +207,14 @@ func Login() {
 	log.Println(tokenEndpointRawResponse)
 
 	fmt.Println("Login succeeded")
+}
+
+func openInBrowser(url string) {
+	args := []string{"open", url}
+	cmd := exec.Command(args[0], args[1])
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func AuthorizationUrl() string {
