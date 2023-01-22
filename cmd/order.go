@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -41,6 +42,11 @@ func init() {
 }
 
 func getOrders(outputAsJson bool) {
+	if accessToken == nil {
+		fmt.Fprintln(os.Stderr, "Set COLORME_ACCESS_TOKEN")
+		os.Exit(1)
+	}
+
 	req, err := http.NewRequest("GET", "https://api.shop-pro.jp/v1/sales?after=2022-01-01", nil)
 	if err != nil {
 		log.Fatal(err)

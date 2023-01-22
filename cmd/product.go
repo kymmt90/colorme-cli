@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/kymmt90/colorme-cli/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -38,15 +37,14 @@ var productCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(productCmd)
+}
 
-	accessToken = auth.GetAccessTokenFromEnv()
+func GetProducts(outputAsJson bool) {
 	if accessToken == nil {
 		fmt.Fprintln(os.Stderr, "Set COLORME_ACCESS_TOKEN")
 		os.Exit(1)
 	}
-}
 
-func GetProducts(outputAsJson bool) {
 	req, err := http.NewRequest("GET", "https://api.shop-pro.jp/v1/products?limit=1", nil)
 	if err != nil {
 		log.Fatal(err)
