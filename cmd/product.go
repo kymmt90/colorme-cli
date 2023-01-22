@@ -28,8 +28,6 @@ type Product struct {
 	Stocks      int    `json:"stocks"`
 }
 
-var accessToken *string
-
 var productCmd = &cobra.Command{
 	Use:   "product",
 	Short: "Manage products",
