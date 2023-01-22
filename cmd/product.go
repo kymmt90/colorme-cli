@@ -1,40 +1,95 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
 
+	"github.com/kymmt90/colorme-cli/auth"
 	"github.com/spf13/cobra"
 )
 
-// productCmd represents the product command
+const productTemplate = `=== Product %d
+Name: %s
+Stocks: %d
+Model Number: %s
+Price: ¥%d
+Description: %s`
+
+type Product struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	ModelNumber string `json:"model_number"`
+	Price       int    `json:"sales_price"`
+	Description string `json:"expl"`
+	Stocks      int    `json:"stocks"`
+}
+
+var accessToken *string
+
 var productCmd = &cobra.Command{
 	Use:   "product",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Manage products",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("product called")
+		GetProducts(false)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(productCmd)
 
-	// Here you will define your flags and configuration settings.
+	accessToken = auth.GetAccessTokenFromEnv()
+	if accessToken == nil {
+		fmt.Fprintln(os.Stderr, "Set COLORME_ACCESS_TOKEN")
+		os.Exit(1)
+	}
+}
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// productCmd.PersistentFlags().String("foo", "", "A help for foo")
+func GetProducts(outputAsJson bool) {
+	req, err := http.NewRequest("GET", "https://api.shop-pro.jp/v1/products?limit=1", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// productCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+*accessToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if outputAsJson {
+		fmt.Println(string(body))
+		return
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		log.Fatal(err)
+	}
+
+	productsJson, err := json.Marshal(payload["products"])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var products []Product
+	if err := json.Unmarshal(productsJson, &products); err != nil {
+		log.Fatal(err)
+	}
+
+	for i, v := range products {
+		fmt.Printf(productTemplate+"\n", i+1, v.Name, v.Stocks, v.ModelNumber, v.Price, v.Description)
+	}
 }
