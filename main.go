@@ -12,6 +12,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/kymmt90/colorme-cli/cmd"
 )
 
 const (
@@ -63,6 +65,8 @@ func init() {
 }
 
 func main() {
+	cmd.Execute()
+
 	if len(os.Args[1:]) == 0 {
 		fmt.Fprintf(os.Stderr, "$ colorme login\n")
 		os.Exit(1)
