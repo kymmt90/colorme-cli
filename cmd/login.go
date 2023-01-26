@@ -32,9 +32,13 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-func login() {
+func login() error {
 	fmt.Println("Open the authorization URL...")
-	openInBrowser(AuthorizationUrl())
+
+	if err := openInBrowser(AuthorizationUrl()); err != nil {
+		return err
+	}
+
 	fmt.Println()
 
 	fmt.Println("Paste the \"Authorization Complete\" page's URL")
@@ -42,7 +46,7 @@ func login() {
 
 	authorizationCompleteUrl, err := scanFromStdin()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("Failed to read authorization complete page's URL: %s", err)
 	}
 
 	code := AuthorizationCode(authorizationCompleteUrl)
@@ -52,14 +56,18 @@ func login() {
 	log.Println(tokenEndpointRawResponse)
 
 	fmt.Println("Login succeeded")
+
+	return nil
 }
 
-func openInBrowser(url string) {
+func openInBrowser(url string) error {
 	args := []string{"open", url}
 	cmd := exec.Command(args[0], args[1])
 	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("Failed to open the browser :%s", err)
 	}
+
+	return nil
 }
 
 func AuthorizationUrl() string {
