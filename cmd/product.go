@@ -27,16 +27,25 @@ type Product struct {
 	Stocks      int    `json:"stocks"`
 }
 
-var productCmd = &cobra.Command{
-	Use:   "product",
-	Short: "Manage products",
-	Run: func(cmd *cobra.Command, args []string) {
-		GetProducts(false)
-	},
-}
+var (
+	productCmd = &cobra.Command{
+		Use:   "product",
+		Short: "Manage products",
+		Run: func(cmd *cobra.Command, args []string) {
+			j, err := cmd.Flags().GetBool("json")
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			GetProducts(j)
+		},
+	}
+	outputAsJson bool
+)
 
 func init() {
 	rootCmd.AddCommand(productCmd)
+	productCmd.Flags().BoolVarP(&outputAsJson, "json", "j", false, "output as JSON")
 }
 
 func GetProducts(outputAsJson bool) {
