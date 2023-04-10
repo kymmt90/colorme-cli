@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -16,7 +18,8 @@ Name: %s
 Stocks: %d
 Model Number: %s
 Price: ¥%d
-Description: %s`
+Description: %s
+`
 
 type Product struct {
 	ID          int    `json:"id"`
@@ -25,6 +28,14 @@ type Product struct {
 	Price       int    `json:"sales_price"`
 	Description string `json:"expl"`
 	Stocks      int    `json:"stocks"`
+}
+
+type ShopResource struct {
+	Shop Shop `json:"shop"`
+}
+
+type Shop struct {
+	URL string `json:"url"`
 }
 
 var (
@@ -46,6 +57,37 @@ var (
 func init() {
 	rootCmd.AddCommand(productCmd)
 	productCmd.Flags().BoolVarP(&outputAsJson, "json", "j", false, "output as JSON")
+}
+
+func getShop() (*ShopResource, error) {
+	req, err := http.NewRequestWithContext(context.Background(), "GET", "https://api.shop-pro.jp/v1/shop", nil)
+	if err != nil {
+		return nil, fmt.Errorf("getShop: %w", err)
+	}
+
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+*accessToken)
+	client := http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("getShop: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("getShop: status code is %d", res.StatusCode)
+	}
+
+	var shop ShopResource
+	err = json.NewDecoder(res.Body).Decode(&shop)
+	if err != nil {
+		return nil, fmt.Errorf("getShop: %w", err)
+	}
+
+	return &shop, nil
 }
 
 func GetProducts(outputAsJson bool) {
@@ -79,6 +121,11 @@ func GetProducts(outputAsJson bool) {
 		return
 	}
 
+	shop, err := getShop()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	var payload map[string]interface{}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		log.Fatal(err)
@@ -96,5 +143,6 @@ func GetProducts(outputAsJson bool) {
 
 	for i, v := range products {
 		fmt.Printf(productTemplate+"\n", i+1, v.Name, v.Stocks, v.ModelNumber, v.Price, v.Description)
+		fmt.Printf("View this product on the shop: %s/?pid=%d\n", shop.Shop.URL, v.ID)
 	}
 }
