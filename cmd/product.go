@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -53,26 +52,19 @@ var (
 		Use:   "product",
 		Short: "Manage products",
 		Run: func(cmd *cobra.Command, args []string) {
-			j, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			err = GetProducts(j)
+			err := GetProducts()
 			if err != nil {
 				log.Fatal(err)
 			}
 		},
 	}
-	outputAsJson bool
 )
 
 func init() {
 	rootCmd.AddCommand(productCmd)
-	productCmd.Flags().BoolVarP(&outputAsJson, "json", "j", false, "output as JSON")
 }
 
-func GetProducts(outputAsJson bool) error {
+func GetProducts() error {
 	if accessToken == nil {
 		fmt.Fprintln(os.Stderr, "Set COLORME_ACCESS_TOKEN")
 		os.Exit(1)
@@ -93,16 +85,6 @@ func GetProducts(outputAsJson bool) error {
 		return fmt.Errorf("GetProducts: %w", err)
 	}
 	defer res.Body.Close()
-
-	if outputAsJson {
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return fmt.Errorf("GetProducts: %w", err)
-		}
-
-		fmt.Println(body)
-		return nil
-	}
 
 	shop, err := getShop()
 	if err != nil {
