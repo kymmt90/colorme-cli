@@ -99,7 +99,7 @@ func GetProducts() error {
 
 	for i, v := range products.Products {
 		fmt.Printf(productTemplate+"\n", i+1, v.Name, v.Stocks, v.ModelNumber, v.Price, v.Description)
-		fmt.Printf("View this product on the shop: %s/?pid=%d\n", shop.Shop.URL, v.ID)
+		fmt.Printf("View this product on the shop: %s/?pid=%d\n\n", shop.Shop.URL, v.ID)
 	}
 
 	return nil
