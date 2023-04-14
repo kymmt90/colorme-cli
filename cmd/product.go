@@ -1,16 +1,12 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
-	"net/url"
 	"os"
-	"strings"
-	"time"
 
+	"github.com/kymmt90/colorme-cli/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -44,15 +40,11 @@ type Shop struct {
 }
 
 var (
-	client = &http.Client{
-		Timeout: 30 * time.Second,
-	}
-	productFields = []string{"id", "name", "stocks", "model_number", "sales_price", "expl"}
-	productCmd    = &cobra.Command{
+	productCmd = &cobra.Command{
 		Use:   "product",
 		Short: "Manage products",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := GetProducts()
+			err := ListProducts()
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -64,35 +56,37 @@ func init() {
 	rootCmd.AddCommand(productCmd)
 }
 
-func GetProducts() error {
+func ListProducts() error {
 	if accessToken == nil {
 		fmt.Fprintln(os.Stderr, "Set COLORME_ACCESS_TOKEN")
 		os.Exit(1)
 	}
 
-	u, err := buildProductsURL()
+	client, err := api.NewClient("https://api.shop-pro.jp/v1", *accessToken)
 	if err != nil {
 		return fmt.Errorf("GetProducts: %w", err)
 	}
 
-	req, err := buildGetRequest(u, *accessToken)
+	resShop, err := client.FetchShop()
+	if err != nil {
+		return fmt.Errorf("GetProducts: %w", err)
+	}
+	defer resShop.Close()
+
+	var shop ShopResource
+	err = json.NewDecoder(resShop).Decode(&shop)
 	if err != nil {
 		return fmt.Errorf("GetProducts: %w", err)
 	}
 
-	res, err := client.Do(req)
+	resProducts, err := client.FetchProducts()
 	if err != nil {
 		return fmt.Errorf("GetProducts: %w", err)
 	}
-	defer res.Body.Close()
-
-	shop, err := getShop()
-	if err != nil {
-		return fmt.Errorf("GetProducts: %w", err)
-	}
+	defer resProducts.Close()
 
 	var products ProductsResource
-	err = json.NewDecoder(res.Body).Decode(&products)
+	err = json.NewDecoder(resProducts).Decode(&products)
 	if err != nil {
 		return fmt.Errorf("GetProducts: %w", err)
 	}
@@ -103,54 +97,4 @@ func GetProducts() error {
 	}
 
 	return nil
-}
-
-func buildProductsURL() (string, error) {
-	u, err := url.Parse("https://api.shop-pro.jp/v1/products?limit=30")
-	if err != nil {
-		return "", fmt.Errorf("buildProductsURL: %w", err)
-	}
-
-	q := u.Query()
-	q.Set("fields", strings.Join(productFields, ","))
-	u.RawQuery = q.Encode()
-
-	return u.String(), nil
-}
-
-func buildGetRequest(url string, token string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("buildGetRequest: %w", err)
-	}
-
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+token)
-
-	return req, nil
-}
-
-func getShop() (*ShopResource, error) {
-	req, err := buildGetRequest("https://api.shop-pro.jp/v1/shop", *accessToken)
-	if err != nil {
-		return nil, fmt.Errorf("getShop: %w", err)
-	}
-
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("getShop: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("getShop: status code is %d", res.StatusCode)
-	}
-
-	var shop ShopResource
-	err = json.NewDecoder(res.Body).Decode(&shop)
-	if err != nil {
-		return nil, fmt.Errorf("getShop: %w", err)
-	}
-
-	return &shop, nil
 }
