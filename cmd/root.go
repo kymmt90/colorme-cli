@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kymmt90/colorme-cli/auth"
+	"github.com/kymmt90/colorme-cli/pkg/auth"
 	"github.com/spf13/cobra"
 )
 
