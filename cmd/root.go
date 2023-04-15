@@ -19,7 +19,7 @@ var rootCmd = &cobra.Command{
 var accessToken *string
 
 func init() {
-	accessToken = auth.GetAccessTokenFromEnv()
+	cobra.OnInitialize(initConfig)
 }
 
 func Execute() {
@@ -27,4 +27,8 @@ func Execute() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func initConfig() {
+	accessToken = auth.GetAccessTokenFromEnv()
 }
