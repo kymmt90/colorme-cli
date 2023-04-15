@@ -11,9 +11,6 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "colorme",
 	Short: "Colormeshop CLI",
-	Run: func(cmd *cobra.Command, args []string) {
-		println("run cobra")
-	},
 }
 
 var accessToken *string
