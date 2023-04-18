@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kymmt90/colorme-cli/pkg/api"
+	"github.com/kymmt90/colorme-cli/pkg/shop"
 )
 
 const productTemplate = `=== Product %d
@@ -28,14 +29,6 @@ type Product struct {
 	Stocks      int    `json:"stocks"`
 }
 
-type ShopResource struct {
-	Shop Shop `json:"shop"`
-}
-
-type Shop struct {
-	URL string `json:"url"`
-}
-
 func ListProducts(client *api.Client) error {
 	resShop, err := client.FetchShop()
 	if err != nil {
@@ -43,7 +36,7 @@ func ListProducts(client *api.Client) error {
 	}
 	defer resShop.Close()
 
-	var shop ShopResource
+	var shop shop.ShopResource
 	err = json.NewDecoder(resShop).Decode(&shop)
 	if err != nil {
 		return fmt.Errorf("GetProducts: %w", err)

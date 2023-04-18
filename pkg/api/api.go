@@ -16,7 +16,10 @@ type Client struct {
 	BaseURL     string
 }
 
-var productFields = []string{"id", "name", "stocks", "model_number", "sales_price", "expl"}
+var (
+	orderFields   = []string{"id", "payment_id", "paid", "delivered", "canceled", "total_price"}
+	productFields = []string{"id", "name", "stocks", "model_number", "sales_price", "expl"}
+)
 
 func NewClient(baseURL string, accessToken string) (*Client, error) {
 	u, err := url.Parse(baseURL)
@@ -33,13 +36,17 @@ func NewClient(baseURL string, accessToken string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) FetchShop() (io.ReadCloser, error) {
-	res, err := c.get("/shop", "")
+func (c *Client) FetchOrders() (io.ReadCloser, error) {
+	q := url.Values{}
+	q.Set("fields", strings.Join(orderFields, ","))
+	q.Set("limit", "30")
+
+	res, err := c.get("/sales", q.Encode())
 	if err != nil {
-		return nil, fmt.Errorf("FetchShop: %w", err)
+		return nil, fmt.Errorf("FetchOrders: %w", err)
 	}
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("FetchShop: status code is %d", res.StatusCode)
+		return nil, fmt.Errorf("FetchOrders: status code is %d", res.StatusCode)
 	}
 
 	return res.Body, nil
@@ -56,6 +63,18 @@ func (c *Client) FetchProducts() (io.ReadCloser, error) {
 	}
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("FetchProducts: status code is %d", res.StatusCode)
+	}
+
+	return res.Body, nil
+}
+
+func (c *Client) FetchShop() (io.ReadCloser, error) {
+	res, err := c.get("/shop", "")
+	if err != nil {
+		return nil, fmt.Errorf("FetchShop: %w", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("FetchShop: status code is %d", res.StatusCode)
 	}
 
 	return res.Body, nil
