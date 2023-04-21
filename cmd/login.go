@@ -12,7 +12,7 @@ func init() {
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Log in to Colorme Shop",
-	Run: func(cmd *cobra.Command, args []string) {
-		login.Login()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return login.Login()
 	},
 }
