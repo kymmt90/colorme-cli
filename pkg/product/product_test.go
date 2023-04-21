@@ -1,4 +1,4 @@
-package product_test
+package product
 
 import (
 	"fmt"
@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/kymmt90/colorme-cli/pkg/api"
-	"github.com/kymmt90/colorme-cli/pkg/product"
 )
 
 func TestListProducts(t *testing.T) {
@@ -59,8 +59,36 @@ func TestListProducts(t *testing.T) {
 		BaseURL:     ts.URL,
 	}
 
-	err := product.ListProducts(c)
+	err := ListProducts(c)
 	if err != nil {
 		t.Errorf("%v", err)
+	}
+}
+
+func Test_parseProducts(t *testing.T) {
+	f, err := os.Open("fixtures/products.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	products, err := parseProducts(f)
+	if err != nil {
+		t.Errorf("parseProducts returns error %v; want nil", err)
+	}
+
+	if got, want := len(products.Products), 1; got != want {
+		t.Errorf("len(products.Products) = %d; want %d", got, want)
+	}
+
+	want := Product{
+		ID:          1342332,
+		Name:        "Tシャツ",
+		ModelNumber: "T-223",
+		Price:       1980,
+		Description: "綿100%のこだわりTシャツです。\n\n肌触りや吸水性の良さにみなさま驚かれます。弊社の人気商品です。\n",
+		Stocks:      20,
+	}
+	if got := products.Products[0]; !reflect.DeepEqual(got, want) {
+		t.Errorf("products[0] = %v; want %v", got, want)
 	}
 }

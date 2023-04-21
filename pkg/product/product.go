@@ -3,6 +3,7 @@ package product
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/kymmt90/colorme-cli/pkg/api"
 	"github.com/kymmt90/colorme-cli/pkg/shop"
@@ -48,8 +49,7 @@ func ListProducts(client *api.Client) error {
 	}
 	defer resProducts.Close()
 
-	var products ProductsResource
-	err = json.NewDecoder(resProducts).Decode(&products)
+	products, err := parseProducts(resProducts)
 	if err != nil {
 		return fmt.Errorf("GetProducts: %w", err)
 	}
@@ -60,4 +60,14 @@ func ListProducts(client *api.Client) error {
 	}
 
 	return nil
+}
+
+func parseProducts(rawResp io.Reader) (*ProductsResource, error) {
+	var products ProductsResource
+	err := json.NewDecoder(rawResp).Decode(&products)
+	if err != nil {
+		return nil, fmt.Errorf("parseProducts: %w", err)
+	}
+
+	return &products, nil
 }
