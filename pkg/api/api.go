@@ -41,7 +41,7 @@ func (c *Client) FetchOrders() (io.ReadCloser, error) {
 	q.Set("fields", strings.Join(orderFields, ","))
 	q.Set("limit", "30")
 
-	res, err := c.get("/sales", q.Encode())
+	res, err := c.Get("/sales", q.Encode())
 	if err != nil {
 		return nil, fmt.Errorf("FetchOrders: %w", err)
 	}
@@ -57,7 +57,7 @@ func (c *Client) FetchProducts() (io.ReadCloser, error) {
 	q.Set("fields", strings.Join(productFields, ","))
 	q.Set("limit", "30")
 
-	res, err := c.get("/products?", q.Encode())
+	res, err := c.Get("/products?", q.Encode())
 	if err != nil {
 		return nil, fmt.Errorf("FetchProducts: %w", err)
 	}
@@ -69,7 +69,7 @@ func (c *Client) FetchProducts() (io.ReadCloser, error) {
 }
 
 func (c *Client) FetchShop() (io.ReadCloser, error) {
-	res, err := c.get("/shop", "")
+	res, err := c.Get("/shop", "")
 	if err != nil {
 		return nil, fmt.Errorf("FetchShop: %w", err)
 	}
@@ -80,7 +80,7 @@ func (c *Client) FetchShop() (io.ReadCloser, error) {
 	return res.Body, nil
 }
 
-func (c *Client) get(path string, query string) (*http.Response, error) {
+func (c *Client) Get(path string, query string) (*http.Response, error) {
 	u := c.BaseURL + path
 	if query != "" {
 		u += "?" + query
