@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
+	"errors"
 
 	"github.com/kymmt90/colorme-cli/pkg/api"
 	"github.com/kymmt90/colorme-cli/pkg/product"
@@ -13,23 +12,22 @@ var (
 	productCmd = &cobra.Command{
 		Use:   "product",
 		Short: "Manage products",
-		Run: func(cmd *cobra.Command, args []string) {
-			if accessToken == nil {
-				fmt.Fprintln(os.Stderr, "Set COLORME_ACCESS_TOKEN")
-				os.Exit(1)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if GetAccessToken() == "" {
+				return errors.New("log in or set COLORME_ACCESS_TOKEN")
 			}
 
-			client, err := api.NewClient("https://api.shop-pro.jp/v1", *accessToken)
+			client, err := api.NewClient(apiBaseURL, GetAccessToken())
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				return err
 			}
 
 			err = product.ListProducts(client)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				return err
 			}
+
+			return nil
 		},
 	}
 )

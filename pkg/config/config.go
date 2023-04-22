@@ -51,3 +51,23 @@ func (c *UserConfig) Save() error {
 
 	return nil
 }
+
+func LoadUserConfig() (*UserConfig, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("loadUserConfig: %w", err)
+	}
+
+	f, err := os.Open(filepath.Join(home, ".config/colorme/users.yml"))
+	if err != nil {
+		return &UserConfig{}, nil
+	}
+	defer f.Close()
+
+	var cfg UserConfig
+	if err := yaml.NewDecoder(f).Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("loadUserConfig: %w", err)
+	}
+
+	return &cfg, nil
+}

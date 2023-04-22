@@ -94,7 +94,6 @@ func Login() error {
 		LoginID:     shopResource.Shop.LoginID,
 		AccessToken: token.AccessToken,
 	}
-
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("Login: %w", err)
 	}
