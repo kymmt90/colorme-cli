@@ -1,24 +1,23 @@
 package oauth
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
 
 const (
-	clientId     = "9dc453241d4fba503b235912fab6b9c3a90dc9eae88006affcc9ccf515621432"
-	clientSecret = "f73a04e4ea904aaf1c0282263073ea06d7a1b6d64b751eadfa4d196c69530048"
-	redirectUri  = "urn:ietf:wg:oauth:2.0:oob"
+	authorizationBaseURL = "https://api.shop-pro.jp"
+	clientId             = "9dc453241d4fba503b235912fab6b9c3a90dc9eae88006affcc9ccf515621432"
+	clientSecret         = "f73a04e4ea904aaf1c0282263073ea06d7a1b6d64b751eadfa4d196c69530048"
+	redirectUri          = "http://127.0.0.1:8080/callback"
 )
 
 type Client struct {
@@ -35,12 +34,7 @@ type TokenEndpointResponse struct {
 }
 
 func DoAuthorizationCodeFlow() (*TokenEndpointResponse, error) {
-	c, err := newClient("https://api.shop-pro.jp")
-	if err != nil {
-		return nil, err
-	}
-
-	u, err := c.buildAuthorizationUrl()
+	u, err := buildAuthorizationUrl()
 	if err != nil {
 		return nil, err
 	}
@@ -49,25 +43,12 @@ func DoAuthorizationCodeFlow() (*TokenEndpointResponse, error) {
 		return nil, err
 	}
 
-	fmt.Println("\nPaste the \"Authorization Complete\" page's URL")
-	fmt.Printf("URL: ")
-
-	code, err := scanAuthorizationCode()
+	token, err := acceptCallbackFromAuthorizationServer()
 	if err != nil {
 		return nil, err
 	}
 
-	resToken, err := c.fetchAccessToken(code)
-	if err != nil {
-		return nil, err
-	}
-
-	var token TokenEndpointResponse
-	if err = json.NewDecoder(resToken).Decode(&token); err != nil {
-		return nil, err
-	}
-
-	return &token, nil
+	return token, nil
 }
 
 func newClient(baseURL string) (*Client, error) {
@@ -84,8 +65,8 @@ func newClient(baseURL string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) buildAuthorizationUrl() (string, error) {
-	u, err := url.Parse(c.BaseURL + "/oauth/authorize")
+func buildAuthorizationUrl() (string, error) {
+	u, err := url.Parse(authorizationBaseURL + "/oauth/authorize")
 	if err != nil {
 		return "", fmt.Errorf("BuildAuthorizationUrl: %w", err)
 	}
@@ -110,24 +91,93 @@ func openInBrowser(url string) error {
 	return nil
 }
 
-func scanAuthorizationCode() (string, error) {
-	s := bufio.NewScanner(os.Stdin)
-	if s.Scan() {
-		u, err := url.Parse(s.Text())
+func acceptCallbackFromAuthorizationServer() (*TokenEndpointResponse, error) {
+	var resp io.Reader
+	gotTokenResponse := make(chan struct{})
+	failed := make(chan error)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		code, err := scanAuthorizationCodeFromCallback(r.URL)
 		if err != nil {
-			return "", fmt.Errorf("scanAuthorizationCode: %w", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			failed <- err
+			return
 		}
 
-		segments := strings.Split(u.Path, "/")
+		c, err := newClient(authorizationBaseURL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			failed <- err
+			return
+		}
 
-		return segments[len(segments)-1], nil
+		resp, err = c.fetchAccessToken(code)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			failed <- err
+			return
+		}
+
+		w.Write([]byte("Authorization completed. You can close this page and return to your CLI."))
+
+		gotTokenResponse <- struct{}{}
+	})
+
+	s := http.Server{
+		Addr:         "127.0.0.1:8080",
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  5 * time.Minute,
+		Handler:      mux,
 	}
 
-	if err := s.Err(); err != nil {
-		return "", fmt.Errorf("scanAuthorizationCode: %w", err)
+	var tokenError error
+	go func() {
+		select {
+		case <-gotTokenResponse:
+			if err := s.Shutdown(context.Background()); err != nil {
+				log.Println(err)
+			}
+		case err := <-failed:
+			tokenError = err
+		}
+
+		close(gotTokenResponse)
+		close(failed)
+
+		if err := s.Shutdown(context.Background()); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	if err := s.ListenAndServe(); err != nil {
+		if err != http.ErrServerClosed {
+			return nil, err
+		}
+	}
+	defer s.Close()
+
+	if tokenError != nil {
+		return nil, tokenError
 	}
 
-	return "", errors.New("scanAuthorizationCode: failed to scan")
+	var token TokenEndpointResponse
+	if err := json.NewDecoder(resp).Decode(&token); err != nil {
+		return nil, err
+	}
+
+	return &token, nil
+}
+
+func scanAuthorizationCodeFromCallback(url *url.URL) (string, error) {
+	code := url.Query().Get("code")
+
+	if code == "" {
+		return "", fmt.Errorf("scanAuthorizationCodeFromCallback: code is empty")
+	}
+
+	return code, nil
 }
 
 func (c *Client) fetchAccessToken(code string) (io.ReadCloser, error) {
@@ -140,15 +190,15 @@ func (c *Client) fetchAccessToken(code string) (io.ReadCloser, error) {
 
 	req, err := http.NewRequestWithContext(context.Background(), "POST", c.BaseURL+"/oauth/token", strings.NewReader(v.Encode()))
 	if err != nil {
-		return nil, fmt.Errorf("FetchAccessToken: %w", err)
+		return nil, fmt.Errorf("fetchAccessToken: %w", err)
 	}
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("FetchAccessToken: %w", err)
+		return nil, fmt.Errorf("fetchAccessToken: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("FetchAccessToken: status code is %d", resp.StatusCode)
+		return nil, fmt.Errorf("fetchAccessToken: status code is %d", resp.StatusCode)
 	}
 
 	return resp.Body, nil
