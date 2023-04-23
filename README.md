@@ -4,7 +4,11 @@
 
 ## Installation
 
-WIP
+Download the binary you want from [the releases page](https://github.com/kymmt90/colorme-cli/releases).
+
+```
+$ go install github.com/kymmt90/colorme-cli@latest
+```
 
 ## Usage
 
