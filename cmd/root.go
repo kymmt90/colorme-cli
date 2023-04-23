@@ -14,7 +14,7 @@ var (
 
 	rootCmd = &cobra.Command{
 		Use:   "colorme",
-		Short: "Colormeshop CLI",
+		Short: "Color Me Shop CLI",
 	}
 )
 
